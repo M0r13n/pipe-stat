@@ -1,0 +1,5 @@
+.idea
+.pipe_stat
+venv
+**/__pycache__
+*.pyc
