@@ -34,5 +34,6 @@ setuptools.setup(
     install_requires=[
         "python-gitlab",
         "tabulate",
+        "python-dateutil"
     ]
 )
