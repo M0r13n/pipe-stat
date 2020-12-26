@@ -8,7 +8,7 @@ setuptools.setup(
     version="0.0.1",
     author="Leon Morten Richter",
     author_email="leon.morten@gmail.com",
-    description="Get the status of your running pipelines.",
+    description="Get the status of your GitLab pipelines.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/M0r13n/pipe-stat",
