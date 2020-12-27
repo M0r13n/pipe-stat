@@ -2,7 +2,11 @@
 
 ## Install
 
-TODO
+The program is available on PyPi and can be installed via pip:
+
+```sh
+$ pip install pipe-stat
+```
 
 ## Config
 
@@ -14,7 +18,7 @@ Example config:
 {
   "projects": {
     "parallel": 23234375,
-    "test_project": 123456789
+    "gitlab": 278964
   },
   "base_url": "https://gitlab.com",
   "access_token": "YOUR-TOKEN"
@@ -24,7 +28,7 @@ Example config:
 The application will look for a file named `.pipe_stat` in your home dir (`~`)  and your current working dir (`pwd`) by
 default. This file must be an valid JSON file with the following entries:
 
-- projects: A mapping of <project_name:project_id> (`some_project": 23234375`). You can name the project however you
+- projects: A mapping of <project_name:project_id> (`some_project": 278964`). You can name the project however you
   want. Just remember that the name will be used later when using the program (`pipe-stat some_project`). If you do not
   know your project id, you can get it from your projects GitLab page.
 - base_url: The base url of your gitlab instance. E.g. `https://gitlab.com`

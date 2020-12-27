@@ -147,20 +147,39 @@ class GitlabClient:
         return self.gl.projects.get(_id)
 
     @make_async
-    def get_latest_n_pipelines_for_project(self, project: Project, n: int = 10,
-                                           status: Optional["PipelineStatus"] = None) -> List[ProjectPipeline]:
+    def get_pipelines_for_project(self, project: Project, n: int = 10,
+                                  status: Optional["PipelineStatus"] = None) -> List[ProjectPipeline]:
         """Get the latest pipelines for a given project.
         They are sorted by their id."""
         if status is not None:
             status = status.value
 
-        return [project.pipelines.get(pipe.id) for pipe in project.pipelines.list(per_page=n, status=status)]
+        return list(project.pipelines.list(per_page=n, status=status))
+
+    @make_async
+    def get_full_pipeline(self, project: Project, pipe_id: int) -> ProjectPipeline:
+        return project.pipelines.get(pipe_id)
 
     @make_async
     def get_jobs_for_pipeline(self, pipe: ProjectPipeline, **kwargs: str) -> List[ProjectPipelineJob]:
         """Get the latest jobs for a pipeline.
         They are sorted by their id."""
         return pipe.jobs.list(**kwargs)  # type:ignore
+
+    async def get_latest_n_pipelines_for_project(self, project: Project, n: int = 10,
+                                                 status: Optional["PipelineStatus"] = None) -> \
+            List[ProjectPipeline]:
+        """Get the latest pipelines for a given project.
+        They are sorted by their id."""
+        if status is not None:
+            status = status.value
+
+        pipelines: List[ProjectPipeline] = await self.get_pipelines_for_project(project, n, status)  # type:ignore
+        return sorted(
+            await asyncio.gather(*[self.get_full_pipeline(project, pipe.id) for pipe in pipelines]),
+            key=lambda pipe: int(pipe.id),
+            reverse=True
+        )
 
     async def get_last_job_of_pipeline(self, pipe: ProjectPipeline, **kwargs: str) -> Optional[ProjectPipelineJob]:
         """Get the latest job that ran for any given pipeline.
@@ -327,15 +346,15 @@ async def collect_pipelines_for_project(gl: GitlabClient, p_id: int, n: int = 10
         raise ValueError(f"n must be between 0 and 50, but is {n}")
 
     headers = ["Project", "Commit", "Ref", "Status", "Stage", "Finished"]
+    table = Table(headers)
     project: Project = await gl.get_project(p_id)
     pipelines: List[ProjectPipeline] = await gl.get_latest_n_pipelines_for_project(project,
                                                                                    status=status,
-                                                                                   n=n)  # type: ignore
+                                                                                   n=n)
+    last_jobs = await asyncio.gather(*[gl.get_last_job_of_pipeline(pipe) for pipe in pipelines])
+    last_jobs = sorted(last_jobs, key=lambda job: int(job.pipeline['id']), reverse=True)
 
-    # Build up the final table
-    table = Table(headers)
-    for pipe in pipelines:
-        last_job: Optional[ProjectPipelineJob] = await gl.get_last_job_of_pipeline(pipe)
+    for pipe, last_job in zip(pipelines, last_jobs):
         project_name: str = colored_string(project.path_with_namespace, Text.MAGENTA)
         commit: str = last_job.commit['title'] if last_job else "-"
         ref: str = colored_string(pipe.ref, Text.YELLOW)
@@ -402,7 +421,7 @@ async def async_main() -> None:
                          f"current value is {options.file}")
 
     try:
-        config = Config()
+        config = Config(options.file)
     except ValueError as e:
         opt_parser.error(str(e))
         return

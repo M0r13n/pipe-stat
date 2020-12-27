@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pipe_stat",
-    version="0.0.1",
+    version="0.0.3",
     author="Leon Morten Richter",
     author_email="leon.morten@gmail.com",
     description="Get the status of your GitLab pipelines.",
