@@ -10,10 +10,12 @@ flake:
 mypy:
 	mypy .
 
+.PHONY:build
 build:
 	rm -rf dist/ && python setup.py sdist bdist_wheel
 
-check-build:
+.PHONY:check
+check:
 	twine check dist/*
 
 

@@ -180,8 +180,6 @@ class GitlabClient:
             List[ProjectPipeline]:
         """Get the latest pipelines for a given project.
         They are sorted by their id."""
-        if status is not None:
-            status = status.value
 
         pipelines: List[ProjectPipeline] = await self.get_pipelines_for_project(project, n, status)  # type:ignore
         return sorted(
@@ -453,8 +451,8 @@ async def async_main() -> None:
         # Therefore each pipeline results in a single HTTP request
         opt_parser.error(f"Invalid number of pipelines: {options.number}. Must be at between 1 and 50.")
 
-    status = None
-    if options.status:
+    status: Optional[PipelineStatus] = None
+    if options.status is not None:
         try:
             status = PipelineStatus(options.status)
         except KeyError:
