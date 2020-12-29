@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pipe_stat",
-    version="0.0.4",
+    version="0.0.6",
     author="Leon Morten Richter",
     author_email="leon.morten@gmail.com",
     description="Get the status of your GitLab pipelines right into your terminal.",
@@ -14,10 +14,9 @@ setuptools.setup(
     url="https://github.com/M0r13n/pipe-stat",
     license="MIT",
     packages=setuptools.find_packages(),
+    py_modules=["pipe_stat"],
     entry_points={
-        'console_scripts': [
-            'pipe-stat = pipe_stat.main:main',
-        ],
+        'console_scripts': ["pipe-stat = pipe_stat:main"],
     },
     package_data={
         "pipe_stat": ["py.typed"]
