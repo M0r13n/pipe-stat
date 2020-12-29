@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "parallel": 23234375,
+    "gitlab": 278964
+  },
+  "base_url": "https://gitlab.com",
+  "access_token": "ABCDEFGH"
+}

@@ -5,10 +5,10 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pipe_stat",
-    version="0.0.3",
+    version="0.0.4",
     author="Leon Morten Richter",
     author_email="leon.morten@gmail.com",
-    description="Get the status of your GitLab pipelines.",
+    description="Get the status of your GitLab pipelines right into your terminal.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/M0r13n/pipe-stat",
@@ -32,8 +32,8 @@ setuptools.setup(
     keywords=["Gitlab", "Pipeline", "Status", "Monitor"],
     python_requires='>=3.6',
     install_requires=[
-        "python-gitlab",
-        "tabulate",
-        "python-dateutil"
+        "python-gitlab",  # used to interact with the GitLab API
+        "tabulate",  # used for printing the table
+        "python-dateutil"  # used for pretty_date
     ]
 )

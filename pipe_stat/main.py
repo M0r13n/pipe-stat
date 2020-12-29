@@ -119,6 +119,10 @@ class PipelineStatus(Enum):
     Scheduled = "scheduled"
 
 
+class ProjectNotFoundOnServer(Exception):
+    pass
+
+
 class GitlabClient:
     """Async GitLab-API Facade"""
 
@@ -144,7 +148,12 @@ class GitlabClient:
     @make_async
     def get_project(self, _id: int) -> Project:
         """Get a project by id."""
-        return self.gl.projects.get(_id)
+        try:
+            return self.gl.projects.get(_id)
+        except (GitlabHttpError, GitlabGetError) as e:
+            if e.response_code == 404:
+                raise ProjectNotFoundOnServer(f"Project (#{_id}) not found on {self.gl.url}")
+            raise
 
     @make_async
     def get_pipelines_for_project(self, project: Project, n: int = 10,
@@ -188,13 +197,6 @@ class GitlabClient:
             return (await self.get_jobs_for_pipeline(pipe, **kwargs))[0]  # type:ignore
         except IndexError:
             return None
-
-    async def project_exists(self, p_id: int) -> bool:
-        try:
-            await self.get_project(p_id)
-            return True
-        except (GitlabHttpError, GitlabGetError):
-            return False
 
 
 def colored_string(s: str, color: Any) -> str:
@@ -413,7 +415,9 @@ def config_exist(file_path: str) -> bool:
 
 
 async def async_main() -> None:
-    opt_parser = default_options_parser()
+    opt_parser: optparse.OptionParser = default_options_parser()
+
+    projects: List[str]
     (options, projects) = opt_parser.parse_args()
 
     if options.file is not None and not config_exist(options.file):
@@ -421,16 +425,21 @@ async def async_main() -> None:
                          f"current value is {options.file}")
 
     try:
+        # Try to load the configuration
         config = Config(options.file)
     except ValueError as e:
+        # This means that either the config is invalid or the path is invalid
+        # So just pass the error message to the user
         opt_parser.error(str(e))
         return
 
     if not projects:
+        # At least a single project is required
         opt_parser.error("No project provided.")
 
     projects_ids: List[int] = []
     for project in projects:
+        # Iterate over each name and check if it can be found in the configuration-file
         if project not in config.projects:
             opt_parser.error(
                 f"project_name: \"{project}\" could not be found in your config. Make sure the entry exists"
@@ -438,6 +447,10 @@ async def async_main() -> None:
         projects_ids.append(config.projects[project])
 
     if not 1 <= options.number <= 50:
+        # Fetching more than 50 pipelines at once, may lead to problems - although it is possible
+        # This is due to the design of the GitLAb API itself:
+        # It is not possible to retrieve all pipelines with ALL required information in a single batch request
+        # Therefore each pipeline results in a single HTTP request
         opt_parser.error(f"Invalid number of pipelines: {options.number}. Must be at between 1 and 50.")
 
     status = None
@@ -467,15 +480,18 @@ async def async_main() -> None:
         )
         return
 
-    for p_id in projects_ids:
-        if not await gl.project_exists(p_id):
-            opt_parser.error(f"Project: {p_id} not found on {url}.")
-
-    await asyncio.gather(*[
-        collect_pipelines_for_project(gl, p_id, n=options.number, status=status)
-        for p_id
-        in projects_ids
-    ])
+    try:
+        # Try to fetch the project, catching possible 404's.
+        # This safes one HTTP request, because we do not need to check if the project exists
+        await asyncio.gather(*[
+            collect_pipelines_for_project(gl, p_id, n=options.number, status=status)
+            for p_id
+            in projects_ids
+        ])
+    except ProjectNotFoundOnServer as e:
+        # The exception contains the project id and therefore pass the error message directly
+        # NOTE: This will stop all running async jobs
+        opt_parser.error(str(e))
 
 
 def main() -> None:

@@ -1,7 +1,13 @@
+import os
 import unittest
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
-from pipe_stat.main import Text, pretty_date, colored_string, Table
+from pipe_stat.main import Text, pretty_date, colored_string, Table, Config
+
+if not str(Path()).endswith("test"):
+    # Move into the test dir, if not already
+    os.chdir(Path(__file__).parent)
 
 
 class TestColor(unittest.TestCase):
@@ -66,3 +72,28 @@ class TestTable(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             table.add_row(["A", "B", "C", "D"])
+
+
+class TestConfig(unittest.TestCase):
+
+    def test_file_not_found(self) -> None:
+        """If the file does not exist a FileNotFoundError should be raised"""
+        with self.assertRaises(FileNotFoundError):
+            Config(file_path=Path("./some/invalid/path/config"))
+
+    def test_invalid_file(self) -> None:
+        """If the file is not a valid JSON file a ValueError should be raised"""
+        with self.assertRaises(ValueError):
+            Config(file_path=Path("./__init__.py"))
+
+    def test_valid_json_but_invalid_config(self) -> None:
+        """If the loaded json does not match the expected layout a ValueError should be raised"""
+        with self.assertRaises(ValueError):
+            Config(file_path=Path("./res/invalid_config"))
+
+    def test_load(self) -> None:
+        c = Config(Path("./res/test_config"))
+        self.assertEqual(23234375, c.projects["parallel"])
+        self.assertEqual(278964, c.projects["gitlab"])
+        self.assertEqual("https://gitlab.com", c.base_url)
+        self.assertEqual("ABCDEFGH", c.access_token)
