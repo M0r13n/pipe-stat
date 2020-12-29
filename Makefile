@@ -1,4 +1,4 @@
-init:
+install:
 	pip install -U --force-reinstall .
 
 run_tests:

@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from pipe_stat import Text, pretty_date, colored_string, Table, Config
+from pipe_stat import Text, pretty_date, colored_string, Table, Config, term_width
 
 if not str(Path()).endswith("test"):
     # Move into the test dir, if not already
@@ -97,3 +97,12 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(278964, c.projects["gitlab"])
         self.assertEqual("https://gitlab.com", c.base_url)
         self.assertEqual("ABCDEFGH", c.access_token)
+
+
+class TestTermWidth(unittest.TestCase):
+
+    def test_get_width(self) -> None:
+        width = term_width()
+        if width:
+            self.assertLessEqual(40, width)
+            self.assertTrue(isinstance(width, int))

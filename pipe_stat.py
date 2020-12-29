@@ -3,12 +3,14 @@ import json
 import optparse
 import os
 import stat
+import subprocess
+import sys
 from datetime import datetime, timezone
 from enum import Enum
 from functools import wraps, partial
 from json import JSONDecodeError
 from pathlib import Path
-from typing import List, Optional, Callable, TypeVar, Any, cast, Dict
+from typing import List, Optional, Callable, TypeVar, Any, cast, Dict, TextIO
 
 import requests.exceptions as exceptions
 from dateutil import parser
@@ -345,7 +347,7 @@ async def collect_pipelines_for_project(gl: GitlabClient, p_id: int, n: int = 10
     if not 0 < n <= 50:
         raise ValueError(f"n must be between 0 and 50, but is {n}")
 
-    headers = ["Project", "Commit", "Ref", "Status", "Stage", "Finished"]
+    headers = ["Project", "Commit", "User", "Status", "User", "Finished"]
     table = Table(headers)
     project: Project = await gl.get_project(p_id)
     pipelines: List[ProjectPipeline] = await gl.get_latest_n_pipelines_for_project(project,
@@ -356,8 +358,8 @@ async def collect_pipelines_for_project(gl: GitlabClient, p_id: int, n: int = 10
 
     for pipe, last_job in zip(pipelines, last_jobs):
         project_name: str = colored_string(project.path_with_namespace, Text.MAGENTA)
-        commit: str = last_job.commit['title'] if last_job else "-"
-        ref: str = colored_string(pipe.ref, Text.YELLOW)
+        commit: str = colored_string(last_job.commit['title'][:25] + "..." if last_job else "-", Text.GREEN)
+        username: str = last_job.user['username']
         stage: str = last_job.stage if last_job else "-"
         finished_at: str = pretty_date(pipe.finished_at) if pipe.finished_at else "-"
 
@@ -371,7 +373,7 @@ async def collect_pipelines_for_project(gl: GitlabClient, p_id: int, n: int = 10
         else:
             pipe_status = colored_string(pipe.status, Text.YELLOW)
 
-        table.add_row([project_name, commit, ref, pipe_status, stage, finished_at])
+        table.add_row([project_name, commit, username, pipe_status, stage, finished_at])
 
     print(table)
 
@@ -410,6 +412,27 @@ def default_options_parser() -> optparse.OptionParser:
 def config_exist(file_path: str) -> bool:
     path = Path(file_path)  # By casting the str to Path we take care of expanding paths (e.g. ~)
     return path.exists()
+
+
+def term_width(out: TextIO = sys.stdout) -> Optional[int]:
+    """Get the width of the terminal"""
+    if not out.isatty():
+        return None
+    try:
+        p = subprocess.Popen(["stty", "size"], stdout=subprocess.PIPE, universal_newlines=True)
+        (std_out, _) = p.communicate()
+        if p.returncode != 0:
+            return None
+        return int(std_out.split()[1])
+    except (IndexError, OSError, ValueError):
+        return None
+
+
+def check_width(min_width: int = 110) -> None:
+    width: Optional[int] = term_width()
+    if width and width < min_width:
+        print(colored_string(f"Your Terminal has less than {min_width} chars "
+                             f"in width which can lead to ugly tables.", Text.YELLOW))
 
 
 async def async_main() -> None:
@@ -477,6 +500,8 @@ async def async_main() -> None:
             f"The private token you provided is not valid for {url}"
         )
         return
+
+    check_width()
 
     try:
         # Try to fetch the project, catching possible 404's.
