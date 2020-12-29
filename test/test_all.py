@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from pipe_stat.main import Text, pretty_date, colored_string, Table, Config
+from pipe_stat import Text, pretty_date, colored_string, Table, Config
 
 if not str(Path()).endswith("test"):
     # Move into the test dir, if not already
